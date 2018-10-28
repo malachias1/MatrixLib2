@@ -465,6 +465,14 @@ class MatrixTests: XCTestCase {
         }
     }
     
+    func testMultNneqM() {
+        let x = Matrix(n: 2, m: 6, initialValue: 6.0) ** Matrix(n: 6, m: 6, initialValue: 2.0)
+        let shape = x.shape
+        
+        XCTAssertEqual(2, shape.n)
+        XCTAssertEqual(6, shape.m)
+    }
+    
     func testTranspose() {
         var x = Matrix(n: 2, m: 3)
         

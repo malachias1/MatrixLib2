@@ -1086,7 +1086,7 @@ public struct Matrix: M {
                             for i in 0..<M {
                                 t += lptr[i*N + r] * rptr[c*M + i]
                             }
-                            xptr[c*M + r] = t
+                            xptr[c*N + r] = t
                         }
                     }
                 }
