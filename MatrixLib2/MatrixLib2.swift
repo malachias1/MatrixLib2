@@ -1,13 +1,23 @@
 //
-//  MatrixLib.swift
+//  MatrixLib2.swift
 //
 //  Created by John Morris on 10/4/18.
 //  Copyright © 2018 John Morris. All rights reserved.
 //
 //  The Vector and Matrix Framework offers a friendly alternative
 //  to Accelerate in cases where accelerate is cumbersome or when
-//  the one exceeds simd's limitations.
-
+//  one exceeds simd's limitations. For what it's worth it illustrates
+//  a variety of interesting points for someone new to swift, but skilled
+//  in java, python, or other OO languages.
+//
+//  - Use of extensions to default various methods without undo loss ot
+//    performance
+//  - Use of operator overloading and subscripting while minimizing code
+//    duplication
+//  - Use of unsafe pointers in a manner that is safe and performance
+//    enhancing
+//  - techniques for building Accelerate Dense and Sparse Matrices
+//
 //  Ease of constructing and accessing matrix contents is central to the
 //  implementation, an area in which Accelerate is dreadful (apart from simd,
 //  which was too small for my needs).  Much of the performance penalty
@@ -59,6 +69,11 @@
 //  The LU Decomposition was ported from C code founded at
 //  https://en.wikipedia.org/wiki/LU_decomposition)
 //
+//  Static versions of LU methods are implementated to allow
+//  the LU Decomposition to be reused if beneficial. Reuse
+//  of decompositions when possible can yield enormous performance
+//  increases.
+//
 
 import Foundation
 import os.log
@@ -66,7 +81,7 @@ import Accelerate
 
 infix operator **: MultiplicationPrecedence
 
-fileprivate let EPSILON = 0e-10
+public let EPSILON = 0e-10
 
 /**
  Protocol for a vector, a 1D array.  Note that a vector
@@ -1101,9 +1116,9 @@ public struct Matrix: M {
      containing column indexes where the permutation matrix has "1". The last element P[N]=S+N,
      where S is the number of row exchanges needed for determinant computation, det(P)=(-1)^S.
      - parameter Tol: tolerance used to determine whether a matrix is degenerate
-     - returns: the inverse of the matrix
+     - returns: the inverse of the matrix and row pivot index
      */
-    func LUPDecompose(Tol: Double=EPSILON) -> (A: Matrix, P: [Int])? {
+    public func LUPDecompose(Tol: Double=EPSILON) -> (A: Matrix, P: [Int])? {
         let N = n_
         let M = m_
         var A = self
@@ -1165,37 +1180,49 @@ public struct Matrix: M {
     
     /**
      Solve an equation A*x=b for x, where A is this matrix
+     - parameter A: LUP Decomposition
+     - parameter P: row pivots
      - parameter b: the rhs vector
      - parameter Tol: tolerance used to determine whether a matrix is degenerate
      - returns: x the solution vector of A*x=b
      */
-    func LUPSolve(b: Vector, Tol: Double=EPSILON) -> Vector? {
-        if let (A, P) = LUPDecompose(Tol: Tol) {
-            let N = n_
-            var x = Vector(count: N)
-            return A.withUnsafeBufferPointer { aptr -> Vector in
-                P.withUnsafeBufferPointer { pptr in
-                    b.withUnsafeBufferPointer { bptr in
-                        x.withUnsafeMutableBufferPointer { xptr in
-                            for i in 0..<N {
-                                xptr[i] = bptr[pptr[i]]
-                                
-                                for k in 0..<i {
-                                    xptr[i] -= aptr[k*N + i] * xptr[k]
-                                }
-                            }
+    public static func LUPSolve(A: Matrix, P: [Int], b: Vector, Tol: Double=EPSILON) -> Vector {
+        let N = A.n_
+        var x = Vector(count: N)
+        return A.withUnsafeBufferPointer { aptr -> Vector in
+            P.withUnsafeBufferPointer { pptr in
+                b.withUnsafeBufferPointer { bptr in
+                    x.withUnsafeMutableBufferPointer { xptr in
+                        for i in 0..<N {
+                            xptr[i] = bptr[pptr[i]]
                             
-                            for i in (0...N-1).reversed() {
-                                for k in i+1..<N {
-                                    xptr[i] -= aptr[k*N + i] * xptr[k]
-                                }
-                                xptr[i] /= aptr[i*N + i]
+                            for k in 0..<i {
+                                xptr[i] -= aptr[k*N + i] * xptr[k]
                             }
                         }
-                        return x
+                        
+                        for i in (0...N-1).reversed() {
+                            for k in i+1..<N {
+                                xptr[i] -= aptr[k*N + i] * xptr[k]
+                            }
+                            xptr[i] /= aptr[i*N + i]
+                        }
                     }
+                    return x
                 }
             }
+        }
+    }
+    
+    /**
+     Solve an equation A*x=b for x, where A is this matrix
+     - parameter b: the rhs vector
+     - parameter Tol: tolerance used to determine whether a matrix is degenerate
+     - returns: x the solution vector of A*x=b
+     */
+    public func LUPSolve(b: Vector, Tol: Double=EPSILON) -> Vector? {
+        if let (A, P) = LUPDecompose(Tol: Tol) {
+            return Matrix.LUPSolve(A: A, P: P, b: b, Tol: Tol)
         }
         return nil
     }
@@ -1204,42 +1231,48 @@ public struct Matrix: M {
      Return the inverse of this matrix. Nil will be returned
      if it is determined during LUP decomposition that the
      matrix is degenerate
+     - parameter A: LUP Decomposition
+     - parameter P: row pivots
      - parameter Tol: tolerance used to determine whether a matrix is degenerate
      - returns: the inverse of the matrix
      */
-    func LUPInvert(Tol: Double=EPSILON) -> Matrix? {
-        if let (A, P) = LUPDecompose(Tol: Tol) {
-            let N = n_
-            var IA = Matrix(n: N, m: N)
-            
-            A.withUnsafeBufferPointer { aptr in
-                P.withUnsafeBufferPointer { pptr in
-                    IA.withUnsafeMutableBufferPointer { iaptr in
-                        for j in 0..<N {
-                            for i in 0..<N {
-                                if (pptr[i] == j) {
-                                    iaptr[j*N + i] = 1.0
-                                } else {
-                                    iaptr[j*N + i] = 0.0
-                                }
-                                
-                                for k in 0..<i {
-                                    iaptr[j*N + i] -= aptr[k*N + i]*iaptr[j*N + k]
-                                }
+    public static func LUPInvert(A: Matrix, P: [Int], Tol: Double=EPSILON) -> Matrix {
+        let N = A.n_
+        var IA = Matrix(n: N, m: N)
+        
+        A.withUnsafeBufferPointer { aptr in
+            P.withUnsafeBufferPointer { pptr in
+                IA.withUnsafeMutableBufferPointer { iaptr in
+                    for j in 0..<N {
+                        for i in 0..<N {
+                            if (pptr[i] == j) {
+                                iaptr[j*N + i] = 1.0
+                            } else {
+                                iaptr[j*N + i] = 0.0
                             }
                             
-                            for i in (0...N-1).reversed()  {
-                                for k in i+1..<N {
-                                    iaptr[j*N + i] -= aptr[k*N + i]*iaptr[j*N + k]
-                                }
-                                iaptr[j*N + i] /= aptr[i*N + i]
+                            for k in 0..<i {
+                                iaptr[j*N + i] -= aptr[k*N + i]*iaptr[j*N + k]
                             }
                         }
                         
+                        for i in (0...N-1).reversed()  {
+                            for k in i+1..<N {
+                                iaptr[j*N + i] -= aptr[k*N + i]*iaptr[j*N + k]
+                            }
+                            iaptr[j*N + i] /= aptr[i*N + i]
+                        }
                     }
+                    
                 }
             }
-            return IA
+        }
+        return IA
+    }
+
+    public func LUPInvert(Tol: Double=EPSILON) -> Matrix? {
+        if let (A, P) = LUPDecompose(Tol: Tol) {
+            return Matrix.LUPInvert(A: A, P: P, Tol: Tol)
         }
         return nil
     }
@@ -1248,28 +1281,34 @@ public struct Matrix: M {
      Return the determinate of this matrix. Nil will be returned
      if it is determined that the underlying LUP decomposition of this
      matrix is degenerate
+     - parameter A: LUP Decomposition
+     - parameter P: row pivots
      - parameter Tol: tolerance used to determine whether a matrix is degenerate
      - returns: the determinate of this matrix
      */
-    func LUPDeterminant(Tol: Double=EPSILON) -> Double? {
-        if let (A, P) = LUPDecompose(Tol: Tol) {
-            let N = n_
-            return A.withUnsafeBufferPointer { aptr -> Double? in
-                return P.withUnsafeBufferPointer { pptr -> Double? in
-                    var det = aptr[0]
-                    
-                    for i in 0..<N {
-                        det *= aptr[i*N + i];
-                    }
-                    
-                    if ((pptr[N] - N) % 2 == 0) {
-                        return det
-                    }
-                    else {
-                        return -det;
-                    }
+    public static func LUPDeterminant(A: Matrix, P: [Int], Tol: Double=EPSILON) -> Double {
+        let N = A.n
+        return A.withUnsafeBufferPointer { aptr -> Double in
+            return P.withUnsafeBufferPointer { pptr -> Double in
+                var det = aptr[0]
+                
+                for i in 0..<N {
+                    det *= aptr[i*N + i];
+                }
+                
+                if ((pptr[N] - N) % 2 == 0) {
+                    return det
+                }
+                else {
+                    return -det;
                 }
             }
+        }
+    }
+    
+    public func LUPDeterminant(Tol: Double=EPSILON) -> Double? {
+        if let (A, P) = LUPDecompose(Tol: Tol) {
+            return Matrix.LUPDeterminant(A: A, P: P, Tol: Tol)
         }
         return nil
     }

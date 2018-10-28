@@ -7,7 +7,7 @@
 //
 
 import XCTest
-@testable import MatrixLib
+@testable import MatrixLib2
 import Accelerate
 
 class VectorTests: XCTestCase {
@@ -552,6 +552,11 @@ class MatrixTests: XCTestCase {
         }
     }
     
+    
+    /**
+     - TODO: Figureout adequate test for decomposition, preferably
+     one that doesn't fail
+     */
     func testLUPDecomposition() {
         let x = Matrix(values: [[2.0, 7.0, 6.0],
                                 [9.0, 5.0, 1.0],
