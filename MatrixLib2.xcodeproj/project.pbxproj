@@ -11,6 +11,7 @@
 		5F52C7EC2183808C00DEB891 /* MatrixLib2Tests.swift in Sources */ = {isa = PBXBuildFile; fileRef = 5F52C7EB2183808C00DEB891 /* MatrixLib2Tests.swift */; };
 		5F52C7EE2183808C00DEB891 /* MatrixLib2.h in Headers */ = {isa = PBXBuildFile; fileRef = 5F52C7E02183808C00DEB891 /* MatrixLib2.h */; settings = {ATTRIBUTES = (Public, ); }; };
 		5F52C7F8218380BD00DEB891 /* MatrixLib2.swift in Sources */ = {isa = PBXBuildFile; fileRef = 5F52C7F7218380BD00DEB891 /* MatrixLib2.swift */; };
+		5FBCC91721874234008D0E2D /* Readme.md in Resources */ = {isa = PBXBuildFile; fileRef = 5FBCC91621874234008D0E2D /* Readme.md */; };
 /* End PBXBuildFile section */
 
 /* Begin PBXContainerItemProxy section */
@@ -31,6 +32,7 @@
 		5F52C7EB2183808C00DEB891 /* MatrixLib2Tests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = MatrixLib2Tests.swift; sourceTree = "<group>"; };
 		5F52C7ED2183808C00DEB891 /* Info.plist */ = {isa = PBXFileReference; lastKnownFileType = text.plist.xml; path = Info.plist; sourceTree = "<group>"; };
 		5F52C7F7218380BD00DEB891 /* MatrixLib2.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = MatrixLib2.swift; sourceTree = "<group>"; };
+		5FBCC91621874234008D0E2D /* Readme.md */ = {isa = PBXFileReference; lastKnownFileType = net.daringfireball.markdown; path = Readme.md; sourceTree = "<group>"; };
 /* End PBXFileReference section */
 
 /* Begin PBXFrameworksBuildPhase section */
@@ -55,6 +57,7 @@
 		5F52C7D32183808C00DEB891 = {
 			isa = PBXGroup;
 			children = (
+				5FBCC91621874234008D0E2D /* Readme.md */,
 				5F52C7DF2183808C00DEB891 /* MatrixLib2 */,
 				5F52C7EA2183808C00DEB891 /* MatrixLib2Tests */,
 				5F52C7DE2183808C00DEB891 /* Products */,
@@ -181,6 +184,7 @@
 			isa = PBXResourcesBuildPhase;
 			buildActionMask = 2147483647;
 			files = (
+				5FBCC91721874234008D0E2D /* Readme.md in Resources */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
